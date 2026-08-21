@@ -1,6 +1,6 @@
 use crate::game::types::{Seconds, Vector2D};
 
-pub struct CpuKeplerOrbit {
+pub struct KeplerOrbit {
     pub semi_major_axis: f64,        // orbit size, in sim distance units
     pub eccentricity: f64,           // 0 = circular, closer to 1 = more elongated
     pub mean_anomaly_at_epoch: f64,  // orbit "position" at t0 — MUST be rebased alongside t0
@@ -9,7 +9,7 @@ pub struct CpuKeplerOrbit {
     pub omega: f64,                  // periapsis argument
 }
 
-impl CpuKeplerOrbit {
+impl KeplerOrbit {
     // Solve Kepler equation M = E - e*sin(E) to calculate position at current_time
     pub fn calculate_position_cpu(&self, _current_time: Seconds) -> Vector2D {
         let n = (self.gravity_factor / self.semi_major_axis.powi(3)).sqrt();
@@ -36,16 +36,3 @@ impl CpuKeplerOrbit {
         Vector2D { x, y }
     }
 }
-
-// #[repr(C)]
-// #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-// struct GpuKeplerOrbit {
-//     semi_major_axis: f32,
-//     eccentricity: f32,
-//     mean_anomaly_at_epoch: f32,
-//     gravity_factor: f32,
-//     delta_t: f32,
-//     omega: f32,
-//     _pad0: f32,
-//     _pad1: f32,
-// }
