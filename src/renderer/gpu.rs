@@ -47,9 +47,10 @@ impl GpuState {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
+            color_space: wgpu::SurfaceColorSpace::Auto,
             width: size.width.max(1),
             height: size.height.max(1),
-            present_mode: wgpu::PresentMode::Fifo, // VSync
+            present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
@@ -75,25 +76,28 @@ impl GpuState {
         }
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::CreateSurfaceError> {
-        let frame = self.surface.get_current_texture();
-
-        match frame.status {
-            wgpu::SurfaceStatus::Good | wgpu::SurfaceStatus::Suboptimal => {}
-            wgpu::SurfaceStatus::Timeout => return Ok(()), // just skip this frame
-            wgpu::SurfaceStatus::Outdated | wgpu::SurfaceStatus::Lost => {
+    pub fn render(&mut self) -> Result<(), String> {
+        let output = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(tex) => tex,
+            wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
+                // still usable, but reconfigure next time for best performance
+                tex
+            }
+            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
+                return Ok(()); // skip this frame
+            }
+            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 self.surface.configure(&self.device, &self.config);
                 return Ok(());
             }
-            wgpu::SurfaceStatus::Occluded => return Ok(()), // window not visible, skip frame
-            wgpu::SurfaceStatus::Validation => {
-                eprintln!("Surface validation error");
-                return Ok(());
+            wgpu::CurrentSurfaceTexture::Validation => {
+                return Err("Surface validation error".to_string());
             }
-        }
+        };
 
-        let output = frame.texture.expect("no texture in surface frame");
-        let view = output.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
         let mut encoder = self
             .device
@@ -106,6 +110,7 @@ impl GpuState {
                 label: Some("Clear Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -120,12 +125,12 @@ impl GpuState {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
-                multiview_mask: todo!(),
+                multiview_mask: None,
             });
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
+        self.queue.present(output);
 
         Ok(())
     }
