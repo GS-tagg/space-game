@@ -1,6 +1,4 @@
-mod gpu;
-
-use gpu::GpuState;
+use crate::renderer::gpu::GpuState;
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
