@@ -27,15 +27,13 @@ impl GpuState {
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         }))
         .expect("Failed to find compatible graphics adapter");
 
         // Device & Queue: Connection to GPU execution units
-        let (device, queue) = block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor::default(),
-            None,
-        ))
-        .expect("Failed to create logical GPU device");
+        let (device, queue) = block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
+            .expect("Failed to create logical GPU device");
 
         // Surface Configuration
         let surface_caps = surface.get_capabilities(&adapter);
@@ -77,19 +75,32 @@ impl GpuState {
         }
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+    pub fn render(&mut self) -> Result<(), wgpu::CreateSurfaceError> {
+        let frame = self.surface.get_current_texture();
 
-        let mut encoder =
-            self.device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Main Render Encoder"),
-                });
+        match frame.status {
+            wgpu::SurfaceStatus::Good | wgpu::SurfaceStatus::Suboptimal => {}
+            wgpu::SurfaceStatus::Timeout => return Ok(()), // just skip this frame
+            wgpu::SurfaceStatus::Outdated | wgpu::SurfaceStatus::Lost => {
+                self.surface.configure(&self.device, &self.config);
+                return Ok(());
+            }
+            wgpu::SurfaceStatus::Occluded => return Ok(()), // window not visible, skip frame
+            wgpu::SurfaceStatus::Validation => {
+                eprintln!("Surface validation error");
+                return Ok(());
+            }
+        }
 
-        // Clear pass
+        let output = frame.texture.expect("no texture in surface frame");
+        let view = output.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Main Render Encoder"),
+            });
+
         {
             let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Clear Pass"),
@@ -109,6 +120,7 @@ impl GpuState {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: todo!(),
             });
         }
 

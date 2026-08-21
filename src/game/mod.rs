@@ -1,3 +1,3 @@
 pub mod types;
-pub mod Cpu_Orbit;
+pub mod cpu_orbit;
 pub mod parallel;

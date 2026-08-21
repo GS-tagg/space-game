@@ -44,13 +44,8 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
-                match gpu.render() {
-                    Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                        gpu.resize(gpu.size);
-                    }
-                    Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
-                    Err(e) => eprintln!("Render error: {e:?}"),
+                if let Err(e) = gpu.render() {
+                    eprintln!("Render error: {e:?}");
                 }
 
                 window.request_redraw();
