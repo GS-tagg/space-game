@@ -1,15 +1,15 @@
 use crate::game::types::{Seconds, Vector2D};
 
-pub struct KeplerOrbit {
-    pub semi_major_axis: f64,
-    pub eccentricity: f64,
-    pub mean_anomaly_at_epoch: f64,
-    pub gravity_factor: f64,
-    pub t0: Seconds,
-    pub omega: f64,
+pub struct CpuKeplerOrbit {
+    pub semi_major_axis: f64,        // orbit size, in sim distance units
+    pub eccentricity: f64,           // 0 = circular, closer to 1 = more elongated
+    pub mean_anomaly_at_epoch: f64,  // orbit "position" at t0 — MUST be rebased alongside t0
+    pub gravity_factor: f64,         // Gravity of parent body (gravitational parameter)
+    pub t0: Seconds,                 // reference epoch; rebase periodically to avoid f32 precision loss in (current_time - t0)
+    pub omega: f64,                  // periapsis argument
 }
 
-impl KeplerOrbit {
+impl CpuKeplerOrbit {
     // Solve Kepler equation M = E - e*sin(E) to calculate position at current_time
     pub fn calculate_position_cpu(&self, _current_time: Seconds) -> Vector2D {
         let n = (self.gravity_factor / self.semi_major_axis.powi(3)).sqrt();
@@ -24,9 +24,8 @@ impl KeplerOrbit {
                 break;
             }
         }
-        let true_anom = 2.0
-            * ((1.0 + self.eccentricity).sqrt() * (e_anomaly / 2.0).sin())
-                .atan2((1.0 - self.eccentricity).sqrt() * (e_anomaly / 2.0).cos());
+        let beta = self.eccentricity / (1.0 + (1.0 - self.eccentricity * self.eccentricity).sqrt());
+        let true_anom = e_anomaly + 2.0 * (beta * e_anomaly.sin() / (1.0 - beta * e_anomaly.cos())).atan();
         let r = self.semi_major_axis * (1.0 - self.eccentricity * e_anomaly.cos());
 
         let x_orb: f64 = r * true_anom.cos();
@@ -38,7 +37,15 @@ impl KeplerOrbit {
     }
 }
 
-fn calculate_position_gpu(){
-
-
-}
+// #[repr(C)]
+// #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+// struct GpuKeplerOrbit {
+//     semi_major_axis: f32,
+//     eccentricity: f32,
+//     mean_anomaly_at_epoch: f32,
+//     gravity_factor: f32,
+//     delta_t: f32,
+//     omega: f32,
+//     _pad0: f32,
+//     _pad1: f32,
+// }
