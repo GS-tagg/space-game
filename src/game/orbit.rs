@@ -11,7 +11,7 @@ pub struct KeplerOrbit {
 
 impl KeplerOrbit {
     // Solve Kepler equation M = E - e*sin(E) to calculate position at current_time
-    pub fn calculate_position(&self, _current_time: Seconds) -> Vector2D {
+    pub fn calculate_position_cpu(&self, _current_time: Seconds) -> Vector2D {
         let n = (self.gravity_factor / self.semi_major_axis.powi(3)).sqrt();
         let m: f64 = self.mean_anomaly_at_epoch + n * (_current_time.0 - self.t0.0);
         let mut e_anomaly = m;
@@ -36,4 +36,9 @@ impl KeplerOrbit {
 
         Vector2D { x, y }
     }
+}
+
+fn calculate_position_gpu(){
+
+
 }
