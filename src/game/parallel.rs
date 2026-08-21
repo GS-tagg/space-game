@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use crate::game::Cpu_Orbit::KeplerOrbit;
+use crate::game::cpu_orbit::KeplerOrbit;
 use crate::game::types::{Vector2D, Seconds};
 
 pub struct ParallelSystemRunner;

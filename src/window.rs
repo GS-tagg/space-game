@@ -1,6 +1,4 @@
-mod gpu;
-
-use gpu::GpuState;
+use crate::renderer::{fps::FpsTracker, gpu::GpuState};
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
@@ -11,6 +9,7 @@ use winit::window::{Window, WindowAttributes};
 struct App {
     window: Option<Arc<Window>>,
     gpu: Option<GpuState>,
+    fps: Option<FpsTracker>,
 }
 
 impl ApplicationHandler for App {
@@ -25,6 +24,7 @@ impl ApplicationHandler for App {
 
             self.window = Some(window);
             self.gpu = Some(gpu);
+            self.fps = Some(FpsTracker::new(60000.0));
         }
     }
 
@@ -34,7 +34,11 @@ impl ApplicationHandler for App {
         _id: winit::window::WindowId,
         event: WindowEvent,
     ) {
-        let (Some(gpu), Some(window)) = (self.gpu.as_mut(), self.window.as_ref()) else {
+        let (Some(gpu), Some(window), Some(fps)) = (
+            self.gpu.as_mut(),
+            self.window.as_ref(),
+            self.fps.as_mut(),
+        ) else {
             return;
         };
 
@@ -46,14 +50,14 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
-                match gpu.render() {
-                    Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                        gpu.resize(gpu.size);
-                    }
-                    Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
-                    Err(e) => eprintln!("Render error: {e:?}"),
+                let start = fps.begin_render();
+
+                if let Err(e) = gpu.render() {
+                    eprintln!("Render error: {e:?}");
                 }
+
+                fps.end_render(start);
+                fps.tick();
 
                 window.request_redraw();
             }
@@ -63,7 +67,7 @@ impl ApplicationHandler for App {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
 
