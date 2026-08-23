@@ -1,4 +1,5 @@
-use crate::game::types::{Seconds, Vector2D};
+use crate::math::Vector2D;
+use crate::game::types::Seconds;
 
 pub struct KeplerOrbit {
     pub semi_major_axis: f64,        // orbit size, in sim distance units

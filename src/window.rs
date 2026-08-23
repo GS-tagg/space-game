@@ -24,7 +24,7 @@ impl ApplicationHandler for App {
 
             self.window = Some(window);
             self.gpu = Some(gpu);
-            self.fps = Some(FpsTracker::new(60000.0));
+            self.fps = Some(FpsTracker::new(60.0));
         }
     }
 

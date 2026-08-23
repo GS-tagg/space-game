@@ -8,10 +8,13 @@ pub struct GpuState {
     pub queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
+    pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    vertex_count: u32,
 }
 
 impl GpuState {
-    pub fn new(window: Arc<Window>) -> Self {
+    pub fn new(window: Arc<Window>, vertices: &[Vertex]) -> Self {
         let size = window.inner_size();
 
         // Instance: Entry point for GPU backends
@@ -30,7 +33,8 @@ impl GpuState {
             apply_limit_buckets: false,
         }))
         .expect("Failed to find compatible graphics adapter");
-
+        let info = adapter.get_info();
+            println!("{:?}", info);
         // Device & Queue: Connection to GPU execution units
         let (device, queue) = block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
             .expect("Failed to create logical GPU device");
@@ -76,7 +80,7 @@ impl GpuState {
         } else {
             surface_caps.present_modes[0]
         };
-
+        //end of vsync
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
@@ -97,8 +101,33 @@ impl GpuState {
             queue,
             config,
             size,
+            pipeline,
+            vertex_buffer,
+            vertex_count
         }
     }
+
+    fn create_pipeline(
+    device: &wgpu::Device,
+    config: &wgpu::SurfaceConfiguration,
+) -> wgpu::RenderPipeline {
+    // Step 1: Load and compile the shader module from triangle.wgsl
+    // Use device.create_shader_module() with include_wgsl!() macro or read the file
+
+    // Step 2: Create a pipeline layout
+    // Use device.create_pipeline_layout() with an empty vec![] for bind group layouts initially
+
+    // Step 3: Create the render pipeline
+    // Use device.create_render_pipeline() with:
+    //   - layout pointing to the pipeline layout from step 2
+    //   - vertex stage with the shader module
+    //   - primitive topology (wgpu::PrimitiveTopology::TriangleList)
+    //   - fragment stage with the shader module
+    //   - targets with the surface format from config
+    //   - Vertex::desc() for the vertex buffer layout
+
+    // Step 4: Return the pipeline
+}
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
@@ -166,5 +195,48 @@ impl GpuState {
         self.queue.present(output);
 
         Ok(())
+    }
+}
+
+// One point of a shape: where it is, and what color it is.
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct Vertex {
+    pub position: [f32; 2],
+    pub color: [f32; 3],
+}
+
+impl Vertex {
+    // Describes the memory layout above so the GPU knows how to read it.
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                // position -> shader location 0
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                // color -> shader location 1
+                wgpu::VertexAttribute {
+                    offset: std::mem::offset_of!(Vertex, color) as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+            ],
+        }
+    }
+}
+
+// Reinterprets a slice of Vertex as a slice of raw bytes, so it can be uploaded to the GPU.
+// Safe because Vertex is #[repr(C)] 
+fn vertices_to_bytes(vertices: &[Vertex]) -> &[u8] {
+    unsafe {
+        std::slice::from_raw_parts(
+            vertices.as_ptr() as *const u8,
+            std::mem::size_of_val(vertices),
+        )
     }
 }

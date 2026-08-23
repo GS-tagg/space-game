@@ -1,10 +1,10 @@
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Vec2 {
+pub struct Vector2D {
     pub x: f64,
     pub y: f64,
 }
 
-impl Vec2 {
+impl Vector2D {
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }

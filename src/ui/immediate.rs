@@ -1,4 +1,4 @@
-use crate::math::Vec2;
+use crate::math::Vector2D;
 use crate::input::InputTracker;
 
 pub struct Rect {
@@ -9,7 +9,7 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn contains(&self, _point: Vec2) -> bool {
+    pub fn contains(&self, _point: Vector2D) -> bool {
         todo!("Implement point-in-rectangle check")
     }
 }
