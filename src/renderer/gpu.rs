@@ -1,10 +1,6 @@
 use pollster::block_on;
 use std::sync::Arc;
-use wgpu::{
-    Label,
-    naga::back::spv::Capability::Shader,
-    wgc::{command::CopySide::Source, pipeline},
-};
+use wgpu::util::DeviceExt;
 use winit::window::Window;
 
 pub struct GpuState {
@@ -103,6 +99,23 @@ impl GpuState {
 
         surface.configure(&device, &config);
 
+        let pipeline = Self::create_pipeline(&device, &config);
+        let vertex_count = vertices.len() as u32;
+        let vertex_buffer = if vertices.is_empty() {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Fallback Vertex Buffer"),
+                size: std::mem::size_of::<Vertex>() as u64,
+                usage: wgpu::BufferUsages::VERTEX,
+                mapped_at_creation: false,
+            })
+        } else {
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: vertices_to_bytes(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            })
+        };
+
         Self {
             surface,
             device,
@@ -121,37 +134,49 @@ impl GpuState {
     ) -> wgpu::RenderPipeline {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("triangle.wgsl").into()),
+            // / gets turned into \ on windows devices
+            source: wgpu::ShaderSource::Wgsl(include_str!("shader/triangle.wgsl").into()),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("render pipeline layout"),
             bind_group_layouts: &[],
-            immediate_size: todo!(),
+            immediate_size: 0,
         });
 
-        let pipeline = device.create_render_pipeline(wgpu::RenderPipeline{
-
-
-        });
-        
-
-        // Step 1: Load and compile the shader module from triangle.wgsl
-        // Use device.create_shader_module() with include_wgsl!() macro or read the file
-
-        // Step 2: Create a pipeline layout
-        // Use device.create_pipeline_layout() with an empty vec![] for bind group layouts initially
-
-        // Step 3: Create the render pipeline
-        // Use device.create_render_pipeline() with:
-        //   - layout pointing to the pipeline layout from step 2
-        //   - vertex stage with the shader module
-        //   - primitive topology (wgpu::PrimitiveTopology::TriangleList)
-        //   - fragment stage with the shader module
-        //   - targets with the surface format from config
-        //   - Vertex::desc() for the vertex buffer layout
-
-        // Step 4: Return the pipeline
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                compilation_options: Default::default(),
+                buffers: &[Some(Vertex::desc())],
+            },
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            cache: None,
+            multiview_mask: None,
+        })
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
