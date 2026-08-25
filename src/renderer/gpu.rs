@@ -1,5 +1,10 @@
 use pollster::block_on;
 use std::sync::Arc;
+use wgpu::{
+    Label,
+    naga::back::spv::Capability::Shader,
+    wgc::{command::CopySide::Source, pipeline},
+};
 use winit::window::Window;
 
 pub struct GpuState {
@@ -34,7 +39,7 @@ impl GpuState {
         }))
         .expect("Failed to find compatible graphics adapter");
         let info = adapter.get_info();
-            println!("{:?}", info);
+        println!("{:?}", info);
         // Device & Queue: Connection to GPU execution units
         let (device, queue) = block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
             .expect("Failed to create logical GPU device");
@@ -52,7 +57,10 @@ impl GpuState {
         const USE_VSYNC: bool = true;
 
         let present_mode = if USE_VSYNC {
-            if surface_caps.present_modes.contains(&wgpu::PresentMode::Fifo) {
+            if surface_caps
+                .present_modes
+                .contains(&wgpu::PresentMode::Fifo)
+            {
                 wgpu::PresentMode::Fifo
             } else if surface_caps
                 .present_modes
@@ -103,31 +111,48 @@ impl GpuState {
             size,
             pipeline,
             vertex_buffer,
-            vertex_count
+            vertex_count,
         }
     }
 
     fn create_pipeline(
-    device: &wgpu::Device,
-    config: &wgpu::SurfaceConfiguration,
-) -> wgpu::RenderPipeline {
-    // Step 1: Load and compile the shader module from triangle.wgsl
-    // Use device.create_shader_module() with include_wgsl!() macro or read the file
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+    ) -> wgpu::RenderPipeline {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("triangle.wgsl").into()),
+        });
 
-    // Step 2: Create a pipeline layout
-    // Use device.create_pipeline_layout() with an empty vec![] for bind group layouts initially
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("render pipeline layout"),
+            bind_group_layouts: &[],
+            immediate_size: todo!(),
+        });
 
-    // Step 3: Create the render pipeline
-    // Use device.create_render_pipeline() with:
-    //   - layout pointing to the pipeline layout from step 2
-    //   - vertex stage with the shader module
-    //   - primitive topology (wgpu::PrimitiveTopology::TriangleList)
-    //   - fragment stage with the shader module
-    //   - targets with the surface format from config
-    //   - Vertex::desc() for the vertex buffer layout
+        let pipeline = device.create_render_pipeline(wgpu::RenderPipeline{
 
-    // Step 4: Return the pipeline
-}
+
+        });
+        
+
+        // Step 1: Load and compile the shader module from triangle.wgsl
+        // Use device.create_shader_module() with include_wgsl!() macro or read the file
+
+        // Step 2: Create a pipeline layout
+        // Use device.create_pipeline_layout() with an empty vec![] for bind group layouts initially
+
+        // Step 3: Create the render pipeline
+        // Use device.create_render_pipeline() with:
+        //   - layout pointing to the pipeline layout from step 2
+        //   - vertex stage with the shader module
+        //   - primitive topology (wgpu::PrimitiveTopology::TriangleList)
+        //   - fragment stage with the shader module
+        //   - targets with the surface format from config
+        //   - Vertex::desc() for the vertex buffer layout
+
+        // Step 4: Return the pipeline
+    }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
@@ -231,7 +256,7 @@ impl Vertex {
 }
 
 // Reinterprets a slice of Vertex as a slice of raw bytes, so it can be uploaded to the GPU.
-// Safe because Vertex is #[repr(C)] 
+// Safe because Vertex is #[repr(C)]
 fn vertices_to_bytes(vertices: &[Vertex]) -> &[u8] {
     unsafe {
         std::slice::from_raw_parts(

@@ -20,7 +20,7 @@ impl ApplicationHandler for App {
                 .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0));
 
             let window = Arc::new(event_loop.create_window(window_attrs).unwrap());
-            let gpu = GpuState::new(window.clone());
+            let gpu = GpuState::new(window.clone(), &[]);
 
             self.window = Some(window);
             self.gpu = Some(gpu);
