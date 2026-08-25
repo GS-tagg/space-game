@@ -1,10 +1,9 @@
-use crate::renderer::{fps::FpsTracker, gpu::GpuState};
+use crate::renderer::{fps::FpsTracker, gpu::GpuState, gpu::Vertex};
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes};
-
 #[derive(Default)]
 struct App {
     window: Option<Arc<Window>>,
@@ -20,7 +19,22 @@ impl ApplicationHandler for App {
                 .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0));
 
             let window = Arc::new(event_loop.create_window(window_attrs).unwrap());
-            let gpu = GpuState::new(window.clone(), &[]);
+            let triangle = [
+                Vertex {
+                    position: [-1.0, -1.0],
+                    color: [1.0, 0.0, 0.0],
+                },
+                Vertex {
+                    position: [1.0, 1.0],
+                    color: [0.0, 1.0, 0.0],
+                },
+                Vertex {
+                    position: [0.0, 1.0],
+                    color: [0.0, 0.0, 0.0],
+                },
+            ];
+
+            let gpu = GpuState::new(window.clone(), &triangle);
 
             self.window = Some(window);
             self.gpu = Some(gpu);
@@ -34,11 +48,9 @@ impl ApplicationHandler for App {
         _id: winit::window::WindowId,
         event: WindowEvent,
     ) {
-        let (Some(gpu), Some(window), Some(fps)) = (
-            self.gpu.as_mut(),
-            self.window.as_ref(),
-            self.fps.as_mut(),
-        ) else {
+        let (Some(gpu), Some(window), Some(fps)) =
+            (self.gpu.as_mut(), self.window.as_ref(), self.fps.as_mut())
+        else {
             return;
         };
 
