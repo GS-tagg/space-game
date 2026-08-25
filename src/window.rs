@@ -4,6 +4,9 @@ use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes};
+
+use rand::{Rng, RngExt};
+
 #[derive(Default)]
 struct App {
     window: Option<Arc<Window>>,
@@ -19,26 +22,48 @@ impl ApplicationHandler for App {
                 .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0));
 
             let window = Arc::new(event_loop.create_window(window_attrs).unwrap());
+            
+            let mut rng = rand::rng();
             let triangle = [
                 Vertex {
-                    position: [-1.0, -1.0],
-                    color: [1.0, 0.0, 0.0],
+                    position: [
+                        rng.random_range(-1.0f32..1.0f32),
+                        rng.random_range(-1.0f32..1.0f32),
+                    ],
+                    color: [
+                        rng.random_range(0.0f32..1.0f32),
+                        rng.random_range(0.0f32..1.0f32),
+                        rng.random_range(0.0f32..1.0f32),
+                    ],
                 },
                 Vertex {
-                    position: [1.0, 1.0],
-                    color: [0.0, 1.0, 0.0],
+                    position: [
+                        rng.random_range(-1.0f32..1.0f32),
+                        rng.random_range(-1.0f32..1.0f32),
+                    ],
+                    color: [
+                        rng.random_range(0.0f32..1.0f32),
+                        rng.random_range(0.0f32..1.0f32),
+                        rng.random_range(0.0f32..1.0f32),
+                    ],
                 },
                 Vertex {
-                    position: [-1.0, 1.0],
-                    color: [0.0, 0.0, 1.0],
+                    position: [
+                        rng.random_range(-1.0f32..1.0f32),
+                        rng.random_range(-1.0f32..1.0f32),
+                    ],
+                    color: [
+                        rng.random_range(0.0f32..1.0f32),
+                        rng.random_range(0.0f32..1.0f32),
+                        rng.random_range(0.0f32..1.0f32),
+                    ],
                 },
             ];
-
             let gpu = GpuState::new(window.clone(), &triangle);
 
             self.window = Some(window);
             self.gpu = Some(gpu);
-            self.fps = Some(FpsTracker::new(60000.0));
+            self.fps = Some(FpsTracker::new(60.0));
         }
     }
 
@@ -63,6 +88,46 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 let start = fps.begin_render();
+
+                let mut rng = rand::rng();
+
+                let triangle = [
+                    Vertex {
+                        position: [
+                            rng.random_range(-1.0f32..1.0f32),
+                            rng.random_range(-1.0f32..1.0f32),
+                        ],
+                        color: [
+                            rng.random_range(0.0f32..1.0f32),
+                            rng.random_range(0.0f32..1.0f32),
+                            rng.random_range(0.0f32..1.0f32),
+                        ],
+                    },
+                    Vertex {
+                        position: [
+                            rng.random_range(-1.0f32..1.0f32),
+                            rng.random_range(-1.0f32..1.0f32),
+                        ],
+                        color: [
+                            rng.random_range(0.0f32..1.0f32),
+                            rng.random_range(0.0f32..1.0f32),
+                            rng.random_range(0.0f32..1.0f32),
+                        ],
+                    },
+                    Vertex {
+                        position: [
+                            rng.random_range(-1.0f32..1.0f32),
+                            rng.random_range(-1.0f32..1.0f32),
+                        ],
+                        color: [
+                            rng.random_range(0.0f32..1.0f32),
+                            rng.random_range(0.0f32..1.0f32),
+                            rng.random_range(0.0f32..1.0f32),
+                        ],
+                    },
+                ];
+
+                gpu.update_vertices(&triangle);
 
                 if let Err(e) = gpu.render() {
                     eprintln!("Render error: {e:?}");

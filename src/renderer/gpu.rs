@@ -50,7 +50,7 @@ impl GpuState {
             .unwrap_or(surface_caps.formats[0]);
 
         // Toggle this to false to disable VSync and test uncapped FPS.
-        const USE_VSYNC: bool = false;
+        const USE_VSYNC: bool = true;
 
         let present_mode = if USE_VSYNC {
             if surface_caps
@@ -105,14 +105,15 @@ impl GpuState {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("Fallback Vertex Buffer"),
                 size: std::mem::size_of::<Vertex>() as u64,
-                usage: wgpu::BufferUsages::VERTEX,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
         } else {
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
                 contents: vertices_to_bytes(vertices),
-                usage: wgpu::BufferUsages::VERTEX,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+
             })
         };
 
@@ -252,6 +253,10 @@ impl GpuState {
 
         Ok(())
     }
+    pub fn update_vertices(&mut self, vertices: &[Vertex]) {
+        self.queue
+            .write_buffer(&self.vertex_buffer, 0, vertices_to_bytes(vertices));
+    }
 }
 
 // One point of a shape: where it is, and what color it is.
@@ -296,4 +301,3 @@ fn vertices_to_bytes(vertices: &[Vertex]) -> &[u8] {
         )
     }
 }
-
