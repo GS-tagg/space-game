@@ -1,4 +1,4 @@
-use crate::game::types::Vector2D;
+use crate::math::Vector2D;
 
 pub struct MapCamera {
     pub center_world_pos: Vector2D,

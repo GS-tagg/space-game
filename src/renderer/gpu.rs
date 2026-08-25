@@ -1,5 +1,6 @@
 use pollster::block_on;
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 use winit::window::Window;
 
 pub struct GpuState {
@@ -8,10 +9,13 @@ pub struct GpuState {
     pub queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
+    pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    vertex_count: u32,
 }
 
 impl GpuState {
-    pub fn new(window: Arc<Window>) -> Self {
+    pub fn new(window: Arc<Window>, vertices: &[Vertex]) -> Self {
         let size = window.inner_size();
 
         // Instance: Entry point for GPU backends
@@ -30,7 +34,8 @@ impl GpuState {
             apply_limit_buckets: false,
         }))
         .expect("Failed to find compatible graphics adapter");
-
+        let info = adapter.get_info();
+        println!("{:?}", info);
         // Device & Queue: Connection to GPU execution units
         let (device, queue) = block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
             .expect("Failed to create logical GPU device");
@@ -48,7 +53,10 @@ impl GpuState {
         const USE_VSYNC: bool = true;
 
         let present_mode = if USE_VSYNC {
-            if surface_caps.present_modes.contains(&wgpu::PresentMode::Fifo) {
+            if surface_caps
+                .present_modes
+                .contains(&wgpu::PresentMode::Fifo)
+            {
                 wgpu::PresentMode::Fifo
             } else if surface_caps
                 .present_modes
@@ -76,7 +84,7 @@ impl GpuState {
         } else {
             surface_caps.present_modes[0]
         };
-
+        //end of vsync
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
@@ -91,13 +99,84 @@ impl GpuState {
 
         surface.configure(&device, &config);
 
+        let pipeline = Self::create_pipeline(&device, &config);
+        let vertex_count = vertices.len() as u32;
+        let vertex_buffer = if vertices.is_empty() {
+            device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Fallback Vertex Buffer"),
+                size: std::mem::size_of::<Vertex>() as u64,
+                usage: wgpu::BufferUsages::VERTEX,
+                mapped_at_creation: false,
+            })
+        } else {
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: vertices_to_bytes(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            })
+        };
+
         Self {
             surface,
             device,
             queue,
             config,
             size,
+            pipeline,
+            vertex_buffer,
+            vertex_count,
         }
+    }
+
+    fn create_pipeline(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+    ) -> wgpu::RenderPipeline {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            // / gets turned into \ on windows devices
+            source: wgpu::ShaderSource::Wgsl(include_str!("shader/triangle.wgsl").into()),
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("render pipeline layout"),
+            bind_group_layouts: &[],
+            immediate_size: 0,
+        });
+
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                compilation_options: Default::default(),
+                buffers: &[Some(Vertex::desc())],
+            },
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            cache: None,
+            multiview_mask: None,
+        })
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -139,7 +218,7 @@ impl GpuState {
             });
 
         {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Clear Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -147,9 +226,9 @@ impl GpuState {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
                             a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,
@@ -160,6 +239,12 @@ impl GpuState {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
+
+            render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            if self.vertex_count > 0 {
+                render_pass.draw(0..self.vertex_count, 0..1);
+            }
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -168,3 +253,47 @@ impl GpuState {
         Ok(())
     }
 }
+
+// One point of a shape: where it is, and what color it is.
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct Vertex {
+    pub position: [f32; 2],
+    pub color: [f32; 3],
+}
+
+impl Vertex {
+    // Describes the memory layout above so the GPU knows how to read it.
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                // position -> shader location 0
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                // color -> shader location 1
+                wgpu::VertexAttribute {
+                    offset: std::mem::offset_of!(Vertex, color) as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+            ],
+        }
+    }
+}
+
+// Reinterprets a slice of Vertex as a slice of raw bytes, so it can be uploaded to the GPU.
+// Safe because Vertex is #[repr(C)]
+fn vertices_to_bytes(vertices: &[Vertex]) -> &[u8] {
+    unsafe {
+        std::slice::from_raw_parts(
+            vertices.as_ptr() as *const u8,
+            std::mem::size_of_val(vertices),
+        )
+    }
+}
+
