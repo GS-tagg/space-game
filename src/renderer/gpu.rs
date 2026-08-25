@@ -50,7 +50,7 @@ impl GpuState {
             .unwrap_or(surface_caps.formats[0]);
 
         // Toggle this to false to disable VSync and test uncapped FPS.
-        const USE_VSYNC: bool = true;
+        const USE_VSYNC: bool = false;
 
         let present_mode = if USE_VSYNC {
             if surface_caps

@@ -15,7 +15,7 @@ impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if self.window.is_none() {
             let window_attrs = WindowAttributes::default()
-                .with_title("Winit + Wgpu App")
+                .with_title("space-game")
                 .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0));
 
             let window = Arc::new(event_loop.create_window(window_attrs).unwrap());
@@ -29,8 +29,8 @@ impl ApplicationHandler for App {
                     color: [0.0, 1.0, 0.0],
                 },
                 Vertex {
-                    position: [0.0, 1.0],
-                    color: [0.0, 0.0, 0.0],
+                    position: [-1.0, 1.0],
+                    color: [0.0, 0.0, 1.0],
                 },
             ];
 
@@ -38,7 +38,7 @@ impl ApplicationHandler for App {
 
             self.window = Some(window);
             self.gpu = Some(gpu);
-            self.fps = Some(FpsTracker::new(60.0));
+            self.fps = Some(FpsTracker::new(60000.0));
         }
     }
 
