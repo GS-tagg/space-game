@@ -1,4 +1,5 @@
 use crate::config::{config, load_runtime_config, save_runtime_config};
+use crate::input::InputState;
 use crate::renderer::{fps::FpsTracker, gpu::GpuState, gpu::Vertex};
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
@@ -11,6 +12,7 @@ struct App {
     window: Option<Arc<Window>>,
     gpu: Option<GpuState>,
     fps: Option<FpsTracker>,
+    input: InputState,
 }
 
 impl ApplicationHandler for App {
@@ -41,6 +43,8 @@ impl ApplicationHandler for App {
             return;
         };
 
+        self.input.update(&event);
+
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
 
@@ -61,6 +65,7 @@ impl ApplicationHandler for App {
                     fps.tick();
                 }
 
+                self.input.end_frame();
                 window.request_redraw();
             }
 
@@ -75,7 +80,12 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut app = App::default();
+    let mut app = App {
+        window: None,
+        gpu: None,
+        fps: None,
+        input: InputState::new(),
+    };
     event_loop.run_app(&mut app)?;
 
     save_runtime_config()?;

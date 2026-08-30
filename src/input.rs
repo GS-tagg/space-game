@@ -34,34 +34,30 @@ impl InputState {
         {
             match state {
                 ElementState::Pressed => {
-                    if !*repeat {
+                    if !*repeat && !self.pressed_keys.contains(code) {
                         self.new_pressed_keys.insert(*code);
-                        self.press_started_at.entry(*code).or_insert_with(Instant::now);
+                        self.press_started_at.insert(*code, Instant::now());
                     }
                     self.pressed_keys.insert(*code);
                 }
                 ElementState::Released => {
                     if self.pressed_keys.contains(code) {
-                        let start = self.press_started_at.remove(code).unwrap_or_else(Instant::now);
-                        self.press_duration.insert(*code, start.elapsed());
+                        let start = self
+                            .press_started_at
+                            .remove(code)
+                            .unwrap_or_else(Instant::now);
+                        let duration = start.elapsed();
+                        self.press_duration.insert(*code, duration);
+
+                        if crate::config::config().input_debug_enabled {
+                            println!(
+                                "input debug: key={:?} released after {:.2}ms",
+                                code,
+                                duration.as_secs_f32() * 1000.0
+                            );
+                        }
                     }
                     self.pressed_keys.remove(code);
-                }
-            }
-
-            if crate::config::config().input_debug_enabled {
-                if let Some(code) = self.pressed_keys.iter().find(|&&key| key == *code) {
-                    let duration = self
-                        .press_started_at
-                        .get(code)
-                        .map(|start| start.elapsed())
-                        .unwrap_or_else(|| Duration::ZERO);
-                    println!(
-                        "input debug: key={:?} pressed={} duration={:.2}ms",
-                        code,
-                        true,
-                        duration.as_secs_f32() * 1000.0
-                    );
                 }
             }
 
