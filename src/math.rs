@@ -1,11 +1,11 @@
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vector2D {
-    pub x: f64,
-    pub y: f64,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Vector2D {
-    pub fn new(x: f64, y: f64) -> Self {
+    pub fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
 
@@ -26,7 +26,7 @@ impl Vector2D {
     }
 
     // Scalar multiplication
-    pub fn scale(self, factor: f64) -> Self {
+    pub fn scale(self, factor: f32) -> Self {
         Self {
             x: self.x * factor,
             y: self.y * factor,
@@ -34,7 +34,7 @@ impl Vector2D {
     }
 
     // Calculate vector magnitude (length)
-    pub fn length(self) -> f64 {
+    pub fn length(self) -> f32 {
         (self.x * self.x + self.y * self.y).sqrt()
     }
 
@@ -42,7 +42,7 @@ impl Vector2D {
     pub fn normalise(self) -> Self {
         let len = self.length();
         //epsilon is essentially 0
-        if len > f64::EPSILON {
+        if len > f32::EPSILON {
             let inv_len = 1.0 / len;
             Self::new(self.x * inv_len, self.y * inv_len)
         } else {
@@ -53,7 +53,7 @@ impl Vector2D {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Mat4 {
-    pub data: [f64; 16],
+    pub data: [f32; 16],
 }
 
 impl Mat4 {
@@ -66,7 +66,7 @@ impl Mat4 {
     }
 
     // 2D Orthographic Projection matrix for UI and map rendering.
-    pub fn orthographic(left: f64, right: f64, bottom: f64, top: f64, near: f64, far: f64) -> Self {
+    pub fn orthographic(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> Self {
         let m00 = 2.0 / (right - left);
         let m11 = 2.0 / (top - bottom);
         let m22 = -2.0 / (far - near);
@@ -84,7 +84,7 @@ impl Mat4 {
 
     // 2D Translation Matrix.
 
-    pub fn from_translation(x: f64, y: f64, z: f64) -> Self {
+    pub fn from_translation(x: f32, y: f32, z: f32) -> Self {
         Self {
             data: [
                 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, x, y, z, 1.0,
@@ -93,7 +93,7 @@ impl Mat4 {
     }
 
     // 2D Scale Matrix.
-    pub fn from_scale(scale_x: f64, scale_y: f64) -> Self {
+    pub fn from_scale(scale_x: f32, scale_y: f32) -> Self {
         Self {
             data: [
                 scale_x, 0.0, 0.0, 0.0, 0.0, scale_y, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
@@ -118,7 +118,7 @@ impl Mat4 {
     }
 
     // Convert matrix data to a flat array suitable for shader uniform buffers.
-    pub fn to_cols_array(&self) -> [f64; 16] {
+    pub fn to_cols_array(&self) -> [f32; 16] {
         self.data
     }
 }

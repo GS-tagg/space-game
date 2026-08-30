@@ -60,7 +60,6 @@ impl ApplicationHandler for App {
                 },
             ];
             let gpu = GpuState::new(window.clone(), &triangle);
-
             self.window = Some(window);
             self.gpu = Some(gpu);
             self.fps = Some(FpsTracker::new(60.0));
