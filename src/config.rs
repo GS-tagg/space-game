@@ -59,7 +59,12 @@ pub fn load_runtime_config() -> Result<(), Box<dyn std::error::Error>> {
 
     for line in contents.lines() {
         let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
+        if line.is_empty() {
+            continue;
+        }
+
+        let line = line.split('#').next().unwrap_or(line).trim();
+        if line.is_empty() {
             continue;
         }
 
@@ -68,14 +73,20 @@ pub fn load_runtime_config() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         match key.trim() {
-            "fps_tracker_enabled" => cfg.fps_tracker_enabled = value.trim().eq_ignore_ascii_case("true"),
-            "vsync_enabled" => cfg.vsync_enabled = value.trim().eq_ignore_ascii_case("true"),
+            "fps_tracker_enabled" => {
+                cfg.fps_tracker_enabled = value.trim().eq_ignore_ascii_case("true");
+            }
+            "vsync_enabled" => {
+                cfg.vsync_enabled = value.trim().eq_ignore_ascii_case("true");
+            }
             "target_fps" => {
                 if let Ok(value) = value.trim().parse::<u16>() {
                     cfg.target_fps = value;
                 }
             }
-            "input_debug_enabled" => cfg.input_debug_enabled = value.trim().eq_ignore_ascii_case("true"),
+            "input_debug_enabled" => {
+                cfg.input_debug_enabled = value.trim().eq_ignore_ascii_case("true");
+            }
             _ => {}
         }
     }
