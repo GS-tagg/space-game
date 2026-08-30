@@ -3,15 +3,18 @@ use crate::math::Vector2D;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct KeplerOrbit {
-    pub semi_major_axis: f32,
-    pub gravity_factor: f32,
-    pub t0: u32,
+    pub semi_major_axis: f32,       // orbit size, in sim distance units
+    pub gravity_factor: f32,        // gravity of parent body (gravitational parameter)
+    pub t0: u32,                    // reference epoch in hours; safe as integer up to ~1000 years at day resolution
 
-    pub eccentricity: u16,
-    pub mean_anomaly_at_epoch: u16,
-    pub omega: u16,
+    pub eccentricity: u16,          // 0 = circular, closer to 1 = more elongated
+    pub mean_anomaly_at_epoch: u16, // orbit "position" at t0 — MUST be rebased alongside t0
+    pub omega: u16,                 // periapsis argument (angle, radians)
     pub _pad0: u16,
 }
+
+impl KeplerOrbit {
+    // Solve Kepler equation M = E - e*sin(E) to calculate position at current_time
 
 fn orbits_to_bytes(orbits: &[KeplerOrbit]) -> &[u8] {
     unsafe {
