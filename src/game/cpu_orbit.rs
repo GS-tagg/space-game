@@ -13,8 +13,6 @@ pub struct KeplerOrbit {
     pub _pad0: u16,
 }
 
-impl KeplerOrbit {
-    // Solve Kepler equation M = E - e*sin(E) to calculate position at current_time
 
 fn orbits_to_bytes(orbits: &[KeplerOrbit]) -> &[u8] {
     unsafe {
@@ -26,6 +24,8 @@ fn orbits_to_bytes(orbits: &[KeplerOrbit]) -> &[u8] {
 }
 
 impl KeplerOrbit {
+    // Solve Kepler equation M = E - e*sin(E) to calculate position at current_time
+
     pub fn eccentricity_f32(&self) -> f32 {
         self.eccentricity as f32 / 65535.0
     }

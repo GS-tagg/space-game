@@ -1,11 +1,10 @@
+use crate::config::{config, load_runtime_config, save_runtime_config};
 use crate::renderer::{fps::FpsTracker, gpu::GpuState, gpu::Vertex};
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes};
-
-use rand::{Rng, RngExt};
 
 #[derive(Default)]
 struct App {
@@ -22,47 +21,11 @@ impl ApplicationHandler for App {
                 .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0));
 
             let window = Arc::new(event_loop.create_window(window_attrs).unwrap());
-            
-            let mut rng = rand::rng();
-            let triangle = [
-                Vertex {
-                    position: [
-                        rng.random_range(-1.0f32..1.0f32),
-                        rng.random_range(-1.0f32..1.0f32),
-                    ],
-                    color: [
-                        rng.random_range(0.0f32..1.0f32),
-                        rng.random_range(0.0f32..1.0f32),
-                        rng.random_range(0.0f32..1.0f32),
-                    ],
-                },
-                Vertex {
-                    position: [
-                        rng.random_range(-1.0f32..1.0f32),
-                        rng.random_range(-1.0f32..1.0f32),
-                    ],
-                    color: [
-                        rng.random_range(0.0f32..1.0f32),
-                        rng.random_range(0.0f32..1.0f32),
-                        rng.random_range(0.0f32..1.0f32),
-                    ],
-                },
-                Vertex {
-                    position: [
-                        rng.random_range(-1.0f32..1.0f32),
-                        rng.random_range(-1.0f32..1.0f32),
-                    ],
-                    color: [
-                        rng.random_range(0.0f32..1.0f32),
-                        rng.random_range(0.0f32..1.0f32),
-                        rng.random_range(0.0f32..1.0f32),
-                    ],
-                },
-            ];
-            let gpu = GpuState::new(window.clone(), &triangle);
+            let gpu = GpuState::new(window.clone(), &[] as &[Vertex]);
             self.window = Some(window);
             self.gpu = Some(gpu);
-            self.fps = Some(FpsTracker::new(60.0));
+            let cfg = config();
+            self.fps = Some(FpsTracker::new(cfg.target_fps as f32));
         }
     }
 
@@ -86,54 +49,17 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
+                let cfg = config();
                 let start = fps.begin_render();
-
-                let mut rng = rand::rng();
-
-                let triangle = [
-                    Vertex {
-                        position: [
-                            rng.random_range(-1.0f32..1.0f32),
-                            rng.random_range(-1.0f32..1.0f32),
-                        ],
-                        color: [
-                            rng.random_range(0.0f32..1.0f32),
-                            rng.random_range(0.0f32..1.0f32),
-                            rng.random_range(0.0f32..1.0f32),
-                        ],
-                    },
-                    Vertex {
-                        position: [
-                            rng.random_range(-1.0f32..1.0f32),
-                            rng.random_range(-1.0f32..1.0f32),
-                        ],
-                        color: [
-                            rng.random_range(0.0f32..1.0f32),
-                            rng.random_range(0.0f32..1.0f32),
-                            rng.random_range(0.0f32..1.0f32),
-                        ],
-                    },
-                    Vertex {
-                        position: [
-                            rng.random_range(-1.0f32..1.0f32),
-                            rng.random_range(-1.0f32..1.0f32),
-                        ],
-                        color: [
-                            rng.random_range(0.0f32..1.0f32),
-                            rng.random_range(0.0f32..1.0f32),
-                            rng.random_range(0.0f32..1.0f32),
-                        ],
-                    },
-                ];
-
-                gpu.update_vertices(&triangle);
-
                 if let Err(e) = gpu.render() {
                     eprintln!("Render error: {e:?}");
                 }
 
                 fps.end_render(start);
-                fps.tick();
+
+                if cfg.fps_tracker_enabled {
+                    fps.tick();
+                }
 
                 window.request_redraw();
             }
@@ -144,11 +70,14 @@ impl ApplicationHandler for App {
 }
 
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+    load_runtime_config()?;
+
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::default();
     event_loop.run_app(&mut app)?;
 
+    save_runtime_config()?;
     Ok(())
 }

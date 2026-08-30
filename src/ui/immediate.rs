@@ -1,5 +1,5 @@
 use crate::math::Vector2D;
-use crate::input::InputTracker;
+use crate::input::InputState;
 
 pub struct Rect {
     pub x: f32,
@@ -9,8 +9,11 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn contains(&self, _point: Vector2D) -> bool {
-        todo!("Implement point-in-rectangle check")
+    pub fn contains(&self, point: Vector2D) -> bool {
+        point.x >= self.x
+            && point.x <= self.x + self.width
+            && point.y >= self.y
+            && point.y <= self.y + self.height
     }
 }
 
@@ -18,7 +21,7 @@ pub struct SimpleUI;
 
 impl SimpleUI {
     /// TASK: Perform hit-test, generate draw primitive, and return click status
-    pub fn button(&mut self, _rect: Rect, _label: &str, _input: &InputTracker) -> bool {
+    pub fn button(&mut self, _rect: Rect, _label: &str, _input: &InputState) -> bool {
         todo!("Render button primitive and handle click detection")
     }
 }
