@@ -1,44 +1,33 @@
+use crate::config::{config, load_runtime_config, save_runtime_config};
+use crate::input::InputState;
 use crate::renderer::{fps::FpsTracker, gpu::GpuState, gpu::Vertex};
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes};
+
 #[derive(Default)]
 struct App {
     window: Option<Arc<Window>>,
     gpu: Option<GpuState>,
     fps: Option<FpsTracker>,
+    input: InputState,
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if self.window.is_none() {
             let window_attrs = WindowAttributes::default()
-                .with_title("Winit + Wgpu App")
+                .with_title("space-game")
                 .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0));
 
             let window = Arc::new(event_loop.create_window(window_attrs).unwrap());
-            let triangle = [
-                Vertex {
-                    position: [-1.0, -1.0],
-                    color: [1.0, 0.0, 0.0],
-                },
-                Vertex {
-                    position: [1.0, 1.0],
-                    color: [0.0, 1.0, 0.0],
-                },
-                Vertex {
-                    position: [0.0, 1.0],
-                    color: [0.0, 0.0, 0.0],
-                },
-            ];
-
-            let gpu = GpuState::new(window.clone(), &triangle);
-
+            let gpu = GpuState::new(window.clone(), &[] as &[Vertex]);
             self.window = Some(window);
             self.gpu = Some(gpu);
-            self.fps = Some(FpsTracker::new(60.0));
+            let cfg = config();
+            self.fps = Some(FpsTracker::new(cfg.target_fps as f32));
         }
     }
 
@@ -54,6 +43,8 @@ impl ApplicationHandler for App {
             return;
         };
 
+        self.input.update(&event);
+
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
 
@@ -62,15 +53,19 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
+                let cfg = config();
                 let start = fps.begin_render();
-
                 if let Err(e) = gpu.render() {
                     eprintln!("Render error: {e:?}");
                 }
 
                 fps.end_render(start);
-                fps.tick();
 
+                if cfg.fps_tracker_enabled {
+                    fps.tick();
+                }
+
+                self.input.end_frame();
                 window.request_redraw();
             }
 
@@ -80,11 +75,19 @@ impl ApplicationHandler for App {
 }
 
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+    load_runtime_config()?;
+
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut app = App::default();
+    let mut app = App {
+        window: None,
+        gpu: None,
+        fps: None,
+        input: InputState::new(),
+    };
     event_loop.run_app(&mut app)?;
 
+    save_runtime_config()?;
     Ok(())
 }

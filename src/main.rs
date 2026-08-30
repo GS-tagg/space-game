@@ -6,6 +6,7 @@ mod math;
 mod game;
 mod ui;
 mod renderer;
+mod config;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     window::run()

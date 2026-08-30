@@ -1,4 +1,3 @@
-use crate::input::InputTracker;
 
 pub struct PlayerController {
     pub position: [f32; 3],
@@ -10,7 +9,4 @@ impl PlayerController {
         todo!("Initialize player state")
     }
 
-    pub fn update(&mut self, _input: &InputTracker, _delta_time: f32) {
-        todo!("Update player coordinates based on input")
-    }
 }
