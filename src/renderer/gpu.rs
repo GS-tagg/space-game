@@ -252,6 +252,59 @@ impl GpuState {
 
         Ok(())
     }
+
+    /// Replace the current vertex buffer with new vertices for the next frame.
+    pub fn update_vertices(&mut self, vertices: &[Vertex]) {
+        self.vertex_count = vertices.len() as u32;
+        if vertices.is_empty() {
+            self.vertex_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Fallback Vertex Buffer"),
+                size: std::mem::size_of::<Vertex>() as u64,
+                usage: wgpu::BufferUsages::VERTEX,
+                mapped_at_creation: false,
+            });
+        } else {
+            self.vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: vertices_to_bytes(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        }
+    }
+
+    /// Create vertex data for a rectangle in pixel coordinates (origin top-left).
+    /// `window_size` is used to convert to clip space.
+    pub fn rect_vertices_for_window(
+        window_size: winit::dpi::PhysicalSize<u32>,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        color: [f32; 3],
+    ) -> Vec<Vertex> {
+        let width = window_size.width as f32;
+        let height = window_size.height as f32;
+
+        let to_clip = |x: f32, y: f32| -> [f32; 2] {
+            let nx = (x / width) * 2.0 - 1.0;
+            let ny = 1.0 - (y / height) * 2.0;
+            [nx, ny]
+        };
+
+        let tl = to_clip(x, y);
+        let tr = to_clip(x + w, y);
+        let bl = to_clip(x, y + h);
+        let br = to_clip(x + w, y + h);
+
+        let mut verts = Vec::with_capacity(6);
+        verts.push(Vertex { position: tl, color });
+        verts.push(Vertex { position: bl, color });
+        verts.push(Vertex { position: tr, color });
+        verts.push(Vertex { position: tr, color });
+        verts.push(Vertex { position: bl, color });
+        verts.push(Vertex { position: br, color });
+        verts
+    }
 }
 
 // One point of a shape: where it is, and what color it is.
